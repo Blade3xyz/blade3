@@ -37,11 +37,11 @@ class Server
     welcome = Packet.new
     welcome.packet_type = PacketType::WELCOME
     welcome.body = {
-      version: Config::VERSION,
-      ruby_version: RUBY_VERSION,
-      ruby_copyright: RUBY_COPYRIGHT,
-      ruby_platform: RUBY_PLATFORM,
-      ruby_description: RUBY_DESCRIPTION
+      Version: Config::VERSION,
+      RubyVersion: RUBY_VERSION,
+      RubyCopyright: RUBY_COPYRIGHT,
+      RubyPlatform: RUBY_PLATFORM,
+      RubyDescription: RUBY_DESCRIPTION
     }
 
     client.puts welcome.to_json
