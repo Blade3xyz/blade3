@@ -9,6 +9,7 @@ module PacketType
   TCP_OPEN = "tcp_open"
   TCP_CLOSE = "tcp_close"
   CLOSE_SERVER = "close_server"
+  TEST_ENCRYPTION = "test_encryption"
 end
 
 class Packet
