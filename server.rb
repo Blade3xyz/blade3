@@ -29,7 +29,9 @@ class Server
   end
 
   def send_outbound(client, packet)
-    client.puts @outbound_crypto.encrypt(packet.to_json)
+    encrypted = @outbound_crypto.encrypt(packet.to_json)
+
+    client.print encrypted + "\0"
   end
 
   def handle_client(client)
@@ -44,7 +46,7 @@ class Server
       RubyDescription: RUBY_DESCRIPTION
     }
 
-    client.puts welcome.to_json
+    client.print welcome.to_json + "\0"
 
     test_encryption = Packet.new
     test_encryption.packet_type = PacketType::TEST_ENCRYPTION

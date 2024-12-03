@@ -63,8 +63,3 @@ class Crypto
         return final
     end
 end
-
-cryp = Crypto.new()
-decrypt = Crypto.new(false)
-encrypted = cryp.encrypt("Hello World 123")
-puts decrypt.decrypt(encrypted)
