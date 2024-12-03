@@ -2,8 +2,8 @@ require "logger"
 require "socket"
 require "./packet.rb"
 require "./config.rb"
+require "./crypto.rb"
 require "json"
-require "rbnacl"
 
 # frozen_string_literal: true
 
@@ -21,7 +21,17 @@ class Server
   def initialize
     @logger = Logger.new(STDOUT)
     @server_config = ServerConfig.new
-    super
+    
+    @logger.debug "Creating inbound, and outbound Crypto instances..."
+
+    @inbound_crypto = Crypto.new(false)
+    @outbound_crypto = Crypto.new(true)
+  end
+
+  def send_outbound(client, packet)
+    encrypted = @outbound_crypto.encrypt(packet.to_json)
+
+    client.print encrypted + "\0"
   end
 
   def handle_client(client)
@@ -29,14 +39,22 @@ class Server
     welcome = Packet.new
     welcome.packet_type = PacketType::WELCOME
     welcome.body = {
-      version: Config::VERSION,
-      ruby_version: RUBY_VERSION,
-      ruby_copyright: RUBY_COPYRIGHT,
-      ruby_platform: RUBY_PLATFORM,
-      ruby_description: RUBY_DESCRIPTION
+      Version: Config::VERSION,
+      RubyVersion: RUBY_VERSION,
+      RubyCopyright: RUBY_COPYRIGHT,
+      RubyPlatform: RUBY_PLATFORM,
+      RubyDescription: RUBY_DESCRIPTION
     }
 
-    client.puts welcome.to_json
+    client.print welcome.to_json + "\0"
+
+    test_encryption = Packet.new
+    test_encryption.packet_type = PacketType::TEST_ENCRYPTION
+    test_encryption.body = {
+      test1: "I am a teapot. Encryption works"
+    }
+
+    send_outbound(client, test_encryption)
 
     @logger.debug "Waiting for incoming packets"
 
@@ -49,8 +67,6 @@ class Server
 
   def listen
     @logger.info "Starting blade3 server..."
-    @logger.info "Initializing encryption..."
-    @key = RbNaCl::Random.random_bytes(RbNaCl::SecretBox.key_bytes)
     @logger.info "Binding to address: #{@server_config.address}:#{@server_config.port}"
   
     @server = TCPServer.new(@server_config.address, @server_config.port)
