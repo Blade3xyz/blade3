@@ -4,13 +4,23 @@ require "./jsonable.rb"
 
 module PacketType
   UNKNOWN = "unknown"
+
+  # Unencrypted welcome packet, sent when a new client connects to the control server
   WELCOME = "welcome"
-  HANDSHAKE = "handshake"
+
+  # Add a forwarded port
   CONFIGURE_ADD_PORT = "configure_add_port"
+
+  # Forward a packet from the ghost server
   TCP_FORWARD = "tcp_forward"
+
+  # A new client connected to the ghost server
   TCP_OPEN = "tcp_open"
+
+  # A client disconnected from the ghost server
   TCP_CLOSE = "tcp_close"
-  CLOSE_SERVER = "close_server"
+
+  # Test encryption!
   TEST_ENCRYPTION = "test_encryption"
 end
 

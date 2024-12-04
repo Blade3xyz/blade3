@@ -3,6 +3,7 @@ require "socket"
 require "./packet.rb"
 require "./config.rb"
 require "./crypto.rb"
+require "./ghost_server.rb"
 require "json"
 
 # frozen_string_literal: true
@@ -18,6 +19,10 @@ class ServerConfig
 end
 
 class Server
+  attr_accessor :ghost_server_list
+  attr_accessor :server
+  attr_accessor :current_client
+
   def initialize
     @logger = Logger.new(STDOUT)
     @server_config = ServerConfig.new
@@ -26,12 +31,30 @@ class Server
 
     @inbound_crypto = Crypto.new(false)
     @outbound_crypto = Crypto.new(true)
+
+    @ghost_server_list = []
+    @current_client = nil
   end
 
   def send_outbound(client, packet)
     encrypted = @outbound_crypto.encrypt(packet.to_json)
 
     client.print encrypted + "\0"
+  end
+
+  def send_outbound_current(packet)
+    send_outbound(@current_client, packet)
+  end
+
+  def map_port(local, remote)
+    @logger.info "Starting ghost TCP server for remote port of #{remote}"
+
+    Thread.start do
+      server = GhostServer.new(self, "0.0.0.0", remote, local)
+      @ghost_server_list.push(server)
+
+      server.work
+    end
   end
 
   def handle_client(client)
@@ -54,12 +77,34 @@ class Server
       test1: "I am a teapot. Encryption works"
     }
 
+    # Send the outbound encryption test packet
     send_outbound(client, test_encryption)
 
     @logger.debug "Waiting for incoming packets"
 
-    while (line = client.gets)
-      @logger.debug "Received line: #{line}"
+    while (line = client.gets "\0")
+      # Decrypt the packet
+      decrypted = @inbound_crypto.decrypt(line)
+      packet = Packet.new
+      packet.from_json(decrypted)
+
+      if packet.packet_type == PacketType::CONFIGURE_ADD_PORT
+        @logger.debug "Mapping port #{packet.body["client_port"]} -> #{packet.body["remote_port"]}"
+
+        map_port(packet.body["client_port"], packet.body["remote_port"])
+      elsif packet.packet_type == PacketType::TCP_FORWARD
+        @ghost_server_list.each do |server|
+          if server.has_connection_id(packet.body["connection_id"])
+            server.forward_packet(packet.body["connection_id"], packet.body["line"])
+          end
+        end
+      elsif packet.packet_type == PacketType::TCP_CLOSE
+        @ghost_server_list.each do |server|
+          if server.has_connection_id(packet.body["connection_id"])
+            server.close
+          end
+        end
+      end
     end
 
     @logger.debug "Client disconnected"
@@ -74,7 +119,14 @@ class Server
     loop do
       Thread.start(@server.accept) do |client|
         @logger.debug "Client connected from #{client.peeraddr}"
-        handle_client(client)
+        if @current_client != nil
+          @logger.warn "Kicking client, I already have a remote server!"
+          client.close
+        else
+          @current_client = client
+
+          handle_client(client)
+        end
       end
     end
   end
