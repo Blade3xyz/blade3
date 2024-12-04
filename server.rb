@@ -22,6 +22,10 @@ class Server
   attr_accessor :ghost_server_list
   attr_accessor :server
   attr_accessor :current_client
+  attr_accessor :total_outbound
+  attr_accessor :total_inbound
+  attr_accessor :total_outbound_packet_size
+  attr_accessor :total_inbound_packet_size
 
   def initialize
     @logger = Logger.new(STDOUT)
@@ -34,10 +38,19 @@ class Server
 
     @ghost_server_list = []
     @current_client = nil
+
+    @total_outbound = 0
+    @total_outbound_packet_size = 0
+
+    @total_inbound = 0
+    @total_inbound_packet_size = 0
   end
 
   def send_outbound(client, packet)
     encrypted = @outbound_crypto.encrypt(packet.to_json)
+
+    @total_outbound += 1
+    @total_outbound_packet_size += encrypted.size
 
     client.print encrypted + "\0"
   end
@@ -95,13 +108,16 @@ class Server
       elsif packet.packet_type == PacketType::TCP_FORWARD
         @ghost_server_list.each do |server|
           if server.has_connection_id(packet.body["connection_id"])
+            @total_inbound += 1
+            @total_inbound_packet_size += line.size
+
             server.forward_packet(packet.body["connection_id"], packet.body["line"])
           end
         end
       elsif packet.packet_type == PacketType::TCP_CLOSE
         @ghost_server_list.each do |server|
           if server.has_connection_id(packet.body["connection_id"])
-            server.close
+            server.close(packet.body["connection_id"])
           end
         end
       end
@@ -110,11 +126,21 @@ class Server
     @logger.debug "Client disconnected"
   end
 
+  def update_thread
+    loop do
+      sleep(10)
+
+      @logger.debug "Total outbound packets #{@total_outbound}(#{@total_outbound_packet_size/1000}Kb), total inbound packets #{@total_inbound}(#{@total_inbound_packet_size/1000}Kb)"
+    end
+  end
+
   def listen
     @logger.info "Starting blade3 server..."
     @logger.info "Binding to address: #{@server_config.address}:#{@server_config.port}"
   
     @server = TCPServer.new(@server_config.address, @server_config.port)
+
+    Thread.new { update_thread }
 
     loop do
       Thread.start(@server.accept) do |client|

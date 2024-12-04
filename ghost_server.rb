@@ -58,9 +58,10 @@ class GhostServer
     end
   end
 
-  def close
-    @can_work = false
-    @connection_id_list.clear
+  def close(connection_id)
+    @connection_id_list.delete(connection_id)
+
+    @logger.debug "Closing remote connection #{connection_id}"
   end
 
   def work
