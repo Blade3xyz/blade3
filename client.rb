@@ -10,13 +10,12 @@ class Client
   attr_accessor :ports
   attr_accessor :port
 
-
   def initialize(address, port)
     @logger = Logger.new(STDOUT)
 
     @address = address
     @port = port
-    @active_client_list = Hash.new
+    @is_encrypted = false
   end
 
   def run_rc
@@ -27,7 +26,9 @@ class Client
   end
 
   def send_outbound(message)
-    @remote.print @outbound_crypto.encrypt(message.to_json) + "\0"
+    final = @outbound_crypto.encrypt(message.to_json).gsub!("\n", "\0")
+
+    @remote.write final + "\n"
   end
 
   def forward_remote_ports
@@ -42,40 +43,21 @@ class Client
     }
   end
 
-  def handle_new_client(packet)
-    Thread.start do
-      @logger.debug "Handling new remote connection with ID #{packet.body["connection_id"]} for port #{packet.body["port"]}"
+  def handle_packet(packet)
+    if packet.packet_type == PacketType::TEST_ENCRYPTION
+      if packet.body["test1"] != "encryption_test123"
+        raise "Encryption failed. The test encryption packet did not have the constant message"
+      else
+        @logger.info "Encryption success! The test encryption packet has the constant message."
+        @logger.info "Tunnel secure, initalizing client"
 
-      connection_id = packet.body["connection_id"]
-
-      stream = TCPSocket.new("0.0.0.0", packet.body["port"])
-
-      @active_client_list[packet.body["connection_id"]] = stream
-
-      while (line = stream.recv(1024))
-        # Forward packet to the remote server
-        tcp_forward_packet = Packet.new
-        tcp_forward_packet.packet_type = PacketType::TCP_FORWARD
-        tcp_forward_packet.body = {
-          connection_id: connection_id,
-          line: Base64.encode64(line)
-        }
-
-        send_outbound(tcp_forward_packet)
+        # Initalize client
+        run_rc
+        forward_remote_ports
       end
-
-      # Disconnected
-      @logger.debug "Local connection closed on port #{packet.body["port"]}"
-
-      tcp_closed_packet = Packet.new
-      tcp_closed_packet.packet_type = PacketType::TCP_CLOSE
-      tcp_closed_packet.body = {
-        connection_id: connection_id,
-      }
-
-      send_outbound(tcp_closed_packet)
     end
   end
+
 
   def mainloop
     @logger.info "Creating inbound, and outbound encryption modules"
@@ -86,44 +68,28 @@ class Client
 
     @remote = TCPSocket.new(@address, @port)
 
-    while (packet = @remote.gets("\0"))
+    while (line = @remote.gets("\n"))
+      line.strip
+
       unless @is_encrypted
-        @logger.debug "Got welcome packet of: #{packet}"
+        @logger.debug "Got welcome packet: #{line}"
 
         @is_encrypted = true
 
         next
       end
 
-      decrypted = @inbound_crypto.decrypt(packet)
+      # Decrypt, and parse incoming packet
+      # Note: Newlines converted to \0 before packet writing
 
+      line.gsub!("\0", "\n")
+      decrypted = @inbound_crypto.decrypt(line)
       packet = Packet.new
       packet.from_json(decrypted)
 
-      if packet.packet_type == PacketType::TEST_ENCRYPTION
-        if packet.body["test1"] != "I am a teapot. Encryption works"
-          raise "Encryption Error. Decrypted packet does not have the magic message!"
-        else
-          @logger.info "Encryption works. Tunnel secure!"
-          run_rc
+      @logger.debug "Got packet: #{decrypted}"
 
-          @logger.info "Forwarding ports to remote..."
-          forward_remote_ports
-        end
-      end
-
-      if packet.packet_type == PacketType::TCP_OPEN
-        handle_new_client(packet)
-      end
-
-      if packet.packet_type == PacketType::TCP_FORWARD
-        if not @active_client_list.has_key?(packet.body["connection_id"])
-          @logger.warn "Failed to forward packet! Connection ID invalid"
-        else
-          @active_client_list[packet.body["connection_id"]].print Base64.decode64(packet.body["line"])
-        end
-      end
+      handle_packet(packet)
     end
   end
-
 end

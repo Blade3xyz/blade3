@@ -14,6 +14,8 @@ class Crypto
 
         @logger = Logger.new(STDOUT)
 
+        @mutex = Mutex.new
+
         @logger.info "Initalizing encryption using AES-256-CBC"
 
         @cipher = OpenSSL::Cipher.new("aes-256-cbc")
@@ -44,9 +46,14 @@ class Crypto
         if not @encrypted
             raise "Encryption disabled for this Crypto instance!"
         end
+        
+        @mutex.lock
+
         final = Base64::encode64(@cipher.update(message) + @cipher.final)
 
         @cipher.reset
+
+        @mutex.unlock
 
         return final
     end
@@ -56,9 +63,13 @@ class Crypto
             raise "Encryption enabled for this Crypto instance!"
         end
 
+        @mutex.lock
+
         final = @cipher.update(Base64::decode64(message)) + @cipher.final
 
         @cipher.reset
+
+        @mutex.unlock
 
         return final
     end
