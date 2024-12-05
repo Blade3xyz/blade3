@@ -104,6 +104,7 @@ class Client
     elsif packet.packet_type == PacketType::TCP_CLOSE
       connection_id = packet.body["connection_id"]
 
+      @logger.info connection_id
       @open_clients[connection_id].close
       @open_clients.delete(connection_id)
 

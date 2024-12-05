@@ -89,7 +89,7 @@ class Blade3Server < EM::Connection
     tcp_close = Packet.new
     tcp_close.packet_type = PacketType::TCP_CLOSE
     tcp_close.body = {
-      connection_id: @server_uuid
+      connection_id: uuid
     }
 
     @ghost_server_list[uuid].close_connection(true)

@@ -26,7 +26,7 @@ class GhostServer < EM::Connection
 
   def unbind
     @logger.debug "TCP_CLOSE on GhostServer running on port #{@remote_port}"
-    
+
     @server.tcp_close(@server_uuid)
   end
 end
