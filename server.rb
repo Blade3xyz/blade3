@@ -178,30 +178,21 @@ class Blade3Server < EM::Connection
   end
 end
 
-class ServerConfig
-  attr_accessor :port
-  attr_accessor :address
-
-  def initialize
-    @port = 9743
-    @address = "0.0.0.0"
-  end
-end
-
 class Server
   attr_accessor :server
 
-  def initialize
+  def initialize(address, port)
     @logger = Logger.new(STDOUT)
-    @server_config = ServerConfig.new
+    @address = address
+    @port = port
   end
 
   def listen
     @logger.info "Starting blade3 server..."
-    @logger.info "Binding to address: #{@server_config.address}:#{@server_config.port}"
+    @logger.info "Binding to address: #{@address}:#{@port}"
   
     EventMachine.run {
-      EventMachine.start_server @server_config.address, @server_config.port, Blade3Server
+      EventMachine.start_server @address, @port, Blade3Server
     }
   end
 end

@@ -20,13 +20,6 @@ class Client
     @open_clients = Hash.new
   end
 
-  def run_rc
-    @logger.info "Running ./user/blade3_client_init.rb"
-
-    require "./user/blade3_client_init.rb"
-    @ports = UserConfigInit.new.get_ports
-  end
-
   def send_outbound(message)
     final = @outbound_crypto.encrypt(message.to_json)
     final.gsub!("\n", "\0")
@@ -55,7 +48,6 @@ class Client
         @logger.info "Tunnel secure, initializing client"
 
         # Initialize client
-        run_rc
         forward_remote_ports
       end
     elsif packet.packet_type == PacketType::TCP_OPEN
