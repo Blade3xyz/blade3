@@ -14,7 +14,7 @@ class GhostServer < EM::Connection
   end
 
   def post_init
-    @logger.info "New connection to remote GhostServer running on port #{@remote_port}"
+    @logger.info "TCP_OPEN on GhostServer running on port #{@remote_port}"
     @server_uuid = @server.tcp_open(self, @local_port)
 
     @client = self
@@ -25,5 +25,8 @@ class GhostServer < EM::Connection
   end
 
   def unbind
+    @logger.debug "TCP_CLOSE on GhostServer running on port #{@remote_port}"
+    
+    @server.tcp_close(@server_uuid)
   end
 end

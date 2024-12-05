@@ -74,7 +74,7 @@ class Blade3Server < EM::Connection
       forward_port(packet)
     elsif packet.packet_type == PacketType::TCP_FORWARD
       decoded = Base64.decode64(packet.body["data"])
-      
+
       @ghost_server_list[packet.body["connection_id"]].send_data(decoded)
     elsif packet.packet_type == PacketType::TCP_CLOSE
       @ghost_server_list[packet.body["connection_id"]].close_connection(true)
@@ -83,6 +83,19 @@ class Blade3Server < EM::Connection
 
       @logger.warn "Closed connection with ID #{packet.body["connection_id"]}"
     end
+  end
+
+  def tcp_close(uuid)
+    tcp_close = Packet.new
+    tcp_close.packet_type = PacketType::TCP_CLOSE
+    tcp_close.body = {
+      connection_id: @server_uuid
+    }
+
+    @ghost_server_list[uuid].close_connection(true)
+    @ghost_server_list.delete(uuid)
+
+    send_packet(tcp_close)
   end
 
   # Handle a new TCP connection to a GhostServer

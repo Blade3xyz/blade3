@@ -101,6 +101,13 @@ class Client
       data = Base64.decode64(packet.body["data"])
 
       @open_clients[connection_id].write data
+    elsif packet.packet_type == PacketType::TCP_CLOSE
+      connection_id = packet.body["connection_id"]
+
+      @open_clients[connection_id].close
+      @open_clients.delete(connection_id)
+
+      @logger.debug "TCP_CLOSE on remote connection with ID #{connection_id}"
     end
   end
 
