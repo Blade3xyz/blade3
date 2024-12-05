@@ -1,4 +1,4 @@
-# Blade<sub>3</sub>
+# Blade<sup>3</sup>
 Port forwarding tool
 
 ## Installation
