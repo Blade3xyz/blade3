@@ -106,16 +106,20 @@ class Blade3Server < EM::Connection
   end
 
   def tcp_close(uuid)
-    tcp_close = Packet.new
-    tcp_close.packet_type = PacketType::TCP_CLOSE
-    tcp_close.body = {
-      connection_id: uuid
-    }
+    if @ghost_server_list.has_key?(uuid)
+      tcp_close = Packet.new
+      tcp_close.packet_type = PacketType::TCP_CLOSE
+      tcp_close.body = {
+        connection_id: uuid
+      }
 
-    @ghost_server_list[uuid].close_connection(true)
-    @ghost_server_list.delete(uuid)
+      @ghost_server_list[uuid].close_connection(true)
+      @ghost_server_list.delete(uuid)
 
-    send_packet(tcp_close)
+      send_packet(tcp_close)
+    else
+      @logger.error "TCP_CLOSE failed for unknown connection #{uuid}"
+    end
   end
 
   # Handle a new TCP connection to a GhostServer
