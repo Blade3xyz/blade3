@@ -5,6 +5,5 @@ Port forwarding tool
 TODO
 
 ## TODO
-* Better configuration
 * Installer
 * Command line tool(blade3ctl)
