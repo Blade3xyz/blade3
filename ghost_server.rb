@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-require "./server.rb"
+require_relative "./server.rb"
 require "securerandom"
 require "eventmachine"
 

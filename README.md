@@ -1,8 +1,8 @@
 # Blade<sup>3</sup>
 Port forwarding tool
 
-## Installation
-TODO
+## About
+Blade3 forwards local services to remote servers over an encrypted tunnel. SSH not required.
 
 ## TODO
 * Installer

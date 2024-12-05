@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 require "logger"
 require "socket"
-require "./crypto.rb"
-require "./packet.rb"
-require "./config.rb"
+require_relative "./crypto.rb"
+require_relative "./packet.rb"
+require_relative "./config.rb"
 
 class Client
   attr_accessor :is_encrypted

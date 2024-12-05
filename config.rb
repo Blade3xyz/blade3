@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-require "./jsonable.rb"
+require_relative "./jsonable.rb"
 
 module Config
   VERSION = "1.0.0"

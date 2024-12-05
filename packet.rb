@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "./jsonable.rb"
+require_relative "./jsonable.rb"
 
 module PacketType
   UNKNOWN = "unknown"

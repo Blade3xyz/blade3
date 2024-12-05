@@ -1,9 +1,9 @@
 require "logger"
 require "socket"
-require "./packet.rb"
-require "./config.rb"
-require "./crypto.rb"
-require "./ghost_server.rb"
+require_relative "./packet.rb"
+require_relative "./config.rb"
+require_relative "./crypto.rb"
+require_relative "./ghost_server.rb"
 require "json"
 require "eventmachine"
 
