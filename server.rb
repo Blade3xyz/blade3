@@ -31,6 +31,8 @@ class Blade3Server < EM::Connection
     @inbound_crypto = Crypto.new(false)
     @outbound_crypto = Crypto.new()
 
+    @ghost_server_list = Hash.new()
+
     send_packet_noencrypt(welcome)
 
     test_encryption = Packet.new
@@ -63,27 +65,69 @@ class Blade3Server < EM::Connection
     @logger.info "Forwarding port #{client_port} -> #{remote_port}"
     @logger.debug "Starting GhostServer on port #{remote_port}"
 
-    EventMachine.start_server "0.0.0.0", remote_port, GhostServer
+    EventMachine.start_server "0.0.0.0", remote_port, GhostServer, self, remote_port, client_port
   end
 
   # Handle inbound packets
   def handle_packet(packet)
     if packet.packet_type == PacketType::CONFIGURE_ADD_PORT
       forward_port(packet)
+    elsif packet.packet_type == PacketType::TCP_FORWARD
+      decoded = Base64.decode64(packet.body["data"])
+      
+      @ghost_server_list[packet.body["connection_id"]].send_data(decoded)
+    elsif packet.packet_type == PacketType::TCP_CLOSE
+      @ghost_server_list[packet.body["connection_id"]].close_connection(true)
+
+      @ghost_server_list.delete(packet.body["connection_id"])
+
+      @logger.warn "Closed connection with ID #{packet.body["connection_id"]}"
     end
+  end
+
+  # Handle a new TCP connection to a GhostServer
+  def tcp_open(ghost_server, local_port)
+    uuid = SecureRandom.uuid
+
+    @ghost_server_list[uuid] = ghost_server
+
+    tcp_open = Packet.new
+    tcp_open.packet_type = PacketType::TCP_OPEN
+    tcp_open.body = {
+      connection_id: uuid,
+      port: local_port
+    }
+
+    send_packet(tcp_open)
+
+    @logger.debug "TCP_OPEN with ID #{uuid}"
+
+    uuid
+  end
+
+  def tcp_forward(uuid, data)
+    new_data = data
+    new_data = Base64.encode64(new_data)
+
+    tcp_forward = Packet.new
+    tcp_forward.packet_type = PacketType::TCP_FORWARD
+    tcp_forward.body = {
+      connection_id: uuid,
+      data: new_data
+    }
+
+    send_packet(tcp_forward)
   end
 
   def receive_line(data)
     begin
-      data.gsub!("\0", "\n")
-      
       # Decrypt and parse incoming packets
       decrypted = @inbound_crypto.decrypt(data)
+      decrypted.gsub!("\0", "\n")
       packet = Packet.new
       packet.from_json(decrypted)
       
       # Handle packet
-      @logger.debug "Decrypted inbound packet: #{decrypted}"
       handle_packet(packet)
     rescue => error
       @logger.error "Packet processing failed, packet dropped. #{error.message}"
@@ -105,31 +149,11 @@ class ServerConfig
 end
 
 class Server
-  attr_accessor :ghost_server_list
   attr_accessor :server
-  attr_accessor :current_client
-  attr_accessor :total_outbound
-  attr_accessor :total_inbound
-  attr_accessor :total_outbound_packet_size
-  attr_accessor :total_inbound_packet_size
 
   def initialize
     @logger = Logger.new(STDOUT)
     @server_config = ServerConfig.new
-    
-    @logger.debug "Creating inbound, and outbound Crypto instances..."
-
-    @inbound_crypto = Crypto.new(false)
-    @outbound_crypto = Crypto.new(true)
-
-    @ghost_server_list = []
-    @current_client = nil
-
-    @total_outbound = 0
-    @total_outbound_packet_size = 0
-
-    @total_inbound = 0
-    @total_inbound_packet_size = 0
   end
 
   def listen
