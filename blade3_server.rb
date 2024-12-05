@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
-require "./server.rb"
-require "./rc.rb"
+require_relative "./server.rb"
+require_relative "./rc.rb"
 require "logger"
 
 logger = Logger.new(STDOUT)

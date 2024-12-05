@@ -7,7 +7,11 @@ class RunScript
 
   def initialize(client = true)
     if client
-      require "./user/client_config.rb"
+      if File.exist? "./user/client_config.rb"
+        require "./user/client_config.rb"
+      else
+        require "/var/blade3/client_config.rb"
+      end
 
       config = ClientConfig.new
 
@@ -15,7 +19,11 @@ class RunScript
       @address = config.get_remote_address
       @port = config.get_remote_port
     else
-      require "./user/server_config.rb"
+      if File.exist? "./user/server_config.rb"
+        require "./user/server_config.rb"
+      else
+        require "/var/blade3/server_config.rb"
+      end
 
       config = ServerConfig.new
 
