@@ -18,6 +18,15 @@ class Blade3Server < EM::Connection
     @logger = Logger.new(STDOUT)
     @logger.info "New connection to Blade3Server"
 
+    @stats = Hash.new
+    @stats["packet_outbound_total"] = 0
+    @stats["packet_inbound_total"] = 0
+    @stats["packet_outbound_total_size"] = 0
+    @stats["packet_inbound_total_size"] = 0
+
+    @stats["connection_inbound_total"] = 0
+    @stats["connection_outbound_total"] = 0
+
     welcome = Packet.new
     welcome.packet_type = PacketType::WELCOME
     welcome.body = {
@@ -29,9 +38,9 @@ class Blade3Server < EM::Connection
     }
 
     @inbound_crypto = Crypto.new(false)
-    @outbound_crypto = Crypto.new()
+    @outbound_crypto = Crypto.new
 
-    @ghost_server_list = Hash.new()
+    @ghost_server_list = Hash.new
 
     send_packet_noencrypt(welcome)
 
@@ -42,6 +51,10 @@ class Blade3Server < EM::Connection
     }
 
     send_packet(test_encryption)
+
+    EM.add_periodic_timer(15) do
+      puts @stats.to_json
+    end
   end
 
   # Send outbound raw packet. DO NOT SEND INSECURE PAYLOADS WITH THIS
@@ -55,6 +68,9 @@ class Blade3Server < EM::Connection
     final.gsub!("\n", "\0")
 
     send_data final + "\n"
+
+    @stats["packet_outbound_total"] += 1
+    @stats["packet_outbound_total_size"] += final.size
   end
 
   # Forward a local port to remote
@@ -75,7 +91,11 @@ class Blade3Server < EM::Connection
     elsif packet.packet_type == PacketType::TCP_FORWARD
       decoded = Base64.decode64(packet.body["data"])
 
-      @ghost_server_list[packet.body["connection_id"]].send_data(decoded)
+      if @ghost_server_list.has_key?(packet.body["connection_id"])
+        @ghost_server_list[packet.body["connection_id"]].send_data(decoded)
+      else
+        @logger.warn "Ignoring TCP_FORWARD for #{packet.body["connection_id"]}, no such connection with that ID"
+      end
     elsif packet.packet_type == PacketType::TCP_CLOSE
       @ghost_server_list[packet.body["connection_id"]].close_connection(true)
 
@@ -102,6 +122,8 @@ class Blade3Server < EM::Connection
   def tcp_open(ghost_server, local_port)
     uuid = SecureRandom.uuid
 
+    @stats["connection_outbound_total"] += 1
+
     @ghost_server_list[uuid] = ghost_server
 
     tcp_open = Packet.new
@@ -119,6 +141,8 @@ class Blade3Server < EM::Connection
   end
 
   def tcp_forward(uuid, data)
+    @stats["connection_inbound_total"] += 1
+
     new_data = data
     new_data = Base64.encode64(new_data)
 
@@ -133,6 +157,9 @@ class Blade3Server < EM::Connection
   end
 
   def receive_line(data)
+    @stats["packet_inbound_total"] += 1
+    @stats["packet_inbound_total_size"] += data.size
+
     begin
       # Decrypt and parse incoming packets
       decrypted = @inbound_crypto.decrypt(data)

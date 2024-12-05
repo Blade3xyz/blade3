@@ -69,18 +69,22 @@ class Client
 
       Thread.start do
 
-        while (line = socket.recv(1024))
-          new_data = line
-          new_data = Base64.encode64(new_data)
+        begin
+          while (line = socket.recv(1024))
+            new_data = line
+            new_data = Base64.encode64(new_data)
 
-          tcp_forward = Packet.new
-          tcp_forward.packet_type = PacketType::TCP_FORWARD
-          tcp_forward.body = {
-            connection_id: connection_id,
-            data: new_data
-          }
+            tcp_forward = Packet.new
+            tcp_forward.packet_type = PacketType::TCP_FORWARD
+            tcp_forward.body = {
+              connection_id: connection_id,
+              data: new_data
+            }
 
-          send_outbound(tcp_forward)
+            send_outbound(tcp_forward)
+          end
+        rescue IOError => e
+          @logger.warn "Failed to get data from local socket: #{e.message}"
         end
 
         @logger.debug "TCP_CLOSE on port #{local_port}"
