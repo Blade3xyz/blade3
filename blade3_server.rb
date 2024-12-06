@@ -5,7 +5,6 @@ require "logger"
 
 logger = Logger.new(STDOUT)
 logger.info "Blade3 Server Start"
-logger.info "Copyright (c) Hunter Stasonis 2024"
 
 logger.info "--- Running Blade3 RC script... ---"
 rc = RunScript.new

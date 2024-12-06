@@ -100,11 +100,15 @@ class Client
     elsif packet.packet_type == PacketType::TCP_CLOSE
       connection_id = packet.body["connection_id"]
 
-      @logger.info connection_id
-      @open_clients[connection_id].close
-      @open_clients.delete(connection_id)
+      if @open_clients.has_key?(connection_id)
+        @logger.info connection_id
+        @open_clients[connection_id].close
+        @open_clients.delete(connection_id)
 
-      @logger.debug "TCP_CLOSE on remote connection with ID #{connection_id}"
+        @logger.debug "TCP_CLOSE on remote connection with ID #{connection_id}"
+      else
+        @logger.warn "TCP_CLOSE failed for remote connection #{connection_id}, no such connection!"
+      end
     end
   end
 

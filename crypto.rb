@@ -25,16 +25,16 @@ class Crypto
             @cipher.decrypt
         end
 
-        if not File.exist?("blade3.key")
+        if not File.exist?("/var/blade3/crypto/blade3.key")
             @key = @cipher.random_key
 
-            File.binwrite("blade3.key", @key)
+            File.binwrite("/var/blade3/crypto/blade3.key", @key)
 
-            @logger.debug "Wrote blade3 key to: ./blade3.key"
+            @logger.debug "Wrote blade3 key to: /var/blade3/crypto/blade3.key"
         else
-            @key = File.binread("blade3.key")
+            @key = File.binread("/var/blade3/crypto/blade3.key")
 
-            @logger.debug "Imported key from ./blade3.key"
+            @logger.debug "Imported key from ./var/blade3/crypto/blade3.key"
         end
 
         @cipher.key = @key
