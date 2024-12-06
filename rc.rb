@@ -10,7 +10,7 @@ class RunScript
       if File.exist? "./user/client_config.rb"
         require "./user/client_config.rb"
       else
-        require "/var/blade3/client_config.rb"
+        require "/etc/blade3/client_config.rb"
       end
 
       config = ClientConfig.new
@@ -22,7 +22,7 @@ class RunScript
       if File.exist? "./user/server_config.rb"
         require "./user/server_config.rb"
       else
-        require "/var/blade3/server_config.rb"
+        require "/etc/blade3/server_config.rb"
       end
 
       config = ServerConfig.new
