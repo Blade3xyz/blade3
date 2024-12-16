@@ -18,6 +18,9 @@ class Blade3Server < EM::Connection
     @logger = Logger.new(STDOUT)
     @logger.info "New connection to Blade3Server"
 
+    @inbound_crypto = Crypto.new(false)
+    @outbound_crypto = Crypto.new(true, @inbound_crypto.iv)
+
     @stats = Hash.new
     @stats["packet_outbound_total"] = 0
     @stats["packet_inbound_total"] = 0
@@ -27,18 +30,19 @@ class Blade3Server < EM::Connection
     @stats["connection_inbound_total"] = 0
     @stats["connection_outbound_total"] = 0
 
+    iv = @inbound_crypto.iv
+    iv.gsub("\n", "\0")
+
     welcome = Packet.new
     welcome.packet_type = PacketType::WELCOME
     welcome.body = {
-      Version: Config::VERSION,
-      RubyVersion: RUBY_VERSION,
-      RubyCopyright: RUBY_COPYRIGHT,
-      RubyPlatform: RUBY_PLATFORM,
-      RubyDescription: RUBY_DESCRIPTION
+      version: Config::VERSION,
+      ruby_version: RUBY_VERSION,
+      ruby_copyright: RUBY_COPYRIGHT,
+      ruby_platform: RUBY_PLATFORM,
+      ruby_description: RUBY_DESCRIPTION,
+      iv: Base64::encode64(iv).delete("\n")
     }
-
-    @inbound_crypto = Crypto.new(false)
-    @outbound_crypto = Crypto.new
 
     @ghost_server_list = Hash.new
 

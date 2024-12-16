@@ -115,8 +115,6 @@ class Client
 
   def mainloop
     @logger.info "Creating inbound, and outbound encryption modules"
-    @inbound_crypto = Crypto.new(false)
-    @outbound_crypto = Crypto.new()
 
     @logger.info "Connecting to remote: #{@address}:#{@port}"
 
@@ -127,6 +125,16 @@ class Client
 
       unless @is_encrypted
         @logger.debug "Got welcome packet: #{line}"
+
+        packet = Packet.new
+        packet.from_json(line)
+
+        iv = packet.body["iv"]
+        iv = Base64::decode64(iv)
+        iv.gsub!("\0", "\n")
+
+        @inbound_crypto = Crypto.new(false, iv)
+        @outbound_crypto = Crypto.new(true, iv)
 
         @is_encrypted = true
 

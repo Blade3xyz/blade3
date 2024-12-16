@@ -8,8 +8,9 @@ class Crypto
     attr_accessor :encrypted
     attr_accessor :cipher
     attr_accessor :key
+    attr_accessor :iv
     
-    def initialize(encrypted = true)
+    def initialize(encrypted = true, iv = "no")
         @encrypted = encrypted
 
         @logger = Logger.new(STDOUT)
@@ -39,7 +40,13 @@ class Crypto
 
         @cipher.key = @key
 
-        @cipher.iv = "0"*16
+        if iv == "no" then
+            @iv = @cipher.random_iv
+        else
+            @iv = iv
+        end
+        
+        @cipher.iv = @iv
     end
 
     def encrypt(message)
