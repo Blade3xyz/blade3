@@ -96,7 +96,12 @@ class Client
       connection_id = packet.body["connection_id"]
       data = Base64.decode64(packet.body["data"])
 
-      @open_clients[connection_id].write data
+      if @open_clients.has_key?(connection_id)
+        @open_clients[connection_id].write data
+      else
+        @logger.warn "TCP_FORWARD failed for remote connection #{connection_id}, no such connection!"
+      end
+ 
     elsif packet.packet_type == PacketType::TCP_CLOSE
       connection_id = packet.body["connection_id"]
 
